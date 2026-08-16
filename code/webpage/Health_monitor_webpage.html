@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EvoFox Physiological Health Monitor</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #07101c;
+    color: white;
+}
+
+header {
+    padding: 22px 35px;
+    background: #0c1827;
+    border-bottom: 1px solid #22344a;
+}
+
+header h1 { margin: 0; font-size: 24px; }
+header p { color: #91a5bc; margin: 7px 0 0; }
+
+.container { max-width: 1400px; margin: auto; padding: 30px; }
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+button {
+    border: none;
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-connect   { background: #22c55e; color: #06120a; }
+.btn-disconnect{ background: #ef4444; color: white; }
+.btn-record    { background: #f43f5e; color: white; }
+.btn-stop      { background: #64748b; color: white; }
+.btn-export    { background: #38bdf8; color: #06121c; }
+.btn-telegram  { background: #0ea5e9; color: #06121c; }
+.btn-analysis  { background: #c084fc; color: #1a0b28; }
+
+.statusbar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 22px;
+}
+
+.pill {
+    padding: 10px 16px;
+    background: #111e2e;
+    border-radius: 8px;
+    color: #9fb1c6;
+    font-size: 13px;
+}
+
+.rec-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #64748b;
+    margin-right: 7px;
+}
+
+.rec-dot.active {
+    background: #ef4444;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink { 50% { opacity: 0.25; } }
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(6,1fr);
+    gap: 14px;
+    margin-bottom: 22px;
+}
+
+.card {
+    background: #101c2c;
+    border: 1px solid #21334a;
+    border-radius: 14px;
+    padding: 18px;
+}
+
+.card-title { color: #91a6bd; font-size: 12px; margin-bottom: 10px; }
+.value { font-size: 30px; font-weight: bold; }
+.unit { font-size: 13px; color: #8ea3ba; }
+
+.green { color: #22c55e; }
+.blue { color: #38bdf8; }
+.orange { color: #f59e0b; }
+.purple { color: #c084fc; }
+.pink { color: #f472b6; }
+.teal { color: #2dd4bf; }
+
+.chart-box {
+    background: #101c2c;
+    border: 1px solid #21334a;
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 18px;
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.chart-title { font-weight: bold; }
+.chart-canvas-wrap { height: 260px; }
+
+.analysis-section {
+    display: none;
+    background: #101c2c;
+    border: 1px solid #21334a;
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 22px;
+}
+
+.analysis-section h2 { margin-top: 0; }
+.analysis-section h3 { color: #7dd3fc; margin-bottom: 8px; }
+
+table.stat-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 22px;
+    font-size: 13px;
+}
+
+table.stat-table th, table.stat-table td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid #21334a;
+}
+
+table.stat-table th { color: #91a6bd; font-weight: normal; }
+
+.mini-charts {
+    display: grid;
+    grid-template-columns: repeat(2,1fr);
+    gap: 18px;
+    margin-top: 10px;
+}
+
+.mini-chart-box {
+    background: #0c1827;
+    border: 1px solid #21334a;
+    border-radius: 10px;
+    padding: 14px;
+}
+
+.mini-chart-canvas-wrap { height: 220px; }
+
+.serial-box {
+    background: #101c2c;
+    border: 1px solid #21334a;
+    border-radius: 14px;
+    padding: 20px;
+}
+
+.serial-output {
+    height: 120px;
+    overflow-y: auto;
+    background: #050c15;
+    padding: 12px;
+    border-radius: 7px;
+    font-family: monospace;
+    color: #7dd3fc;
+    font-size: 12px;
+}
+
+.note {
+    font-size: 12px;
+    color: #6b8099;
+    margin-top: 8px;
+}
+
+@media(max-width: 1100px) { .cards { grid-template-columns: repeat(3,1fr); } }
+@media(max-width: 700px)  { .cards { grid-template-columns: repeat(2,1fr); } .mini-charts { grid-template-columns: 1fr; } }
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>ESP32 Health Monitor</h1>
+    <p>Heart Sound Sensor (BPM) &middot; NTC Thermistor (&deg;F) &middot; MAX30102 (SpO&#8322; only)</p>
+</header>
+
+<div class="container">
+
+    <div class="toolbar">
+        <button class="btn-connect" onclick="connectESP32()">Connect to ESP</button>
+        <button class="btn-disconnect" onclick="disconnectESP32()">Disconnect</button>
+        <button class="btn-record" id="btnRecord" onclick="startRecording()">Record</button>
+        <button class="btn-stop" id="btnStop" onclick="stopRecording()" disabled>Stop Recording</button>
+        <button class="btn-export" onclick="exportPDF()">Export PDF</button>
+        <button class="btn-export" onclick="exportExcel()">Export Excel</button>
+        <button class="btn-telegram" onclick="sendDataToTelegram()">Send Data to Bot</button>
+        <button class="btn-analysis" onclick="showAnalysis()">Show Analysis</button>
+        <button class="btn-analysis" onclick="saveAnalysis()">Save Analysis</button>
+        <button class="btn-analysis" onclick="exportFullAnalysisPDF()">Export Analysis</button>
+    </div>
+
+    <div class="statusbar">
+        <div class="pill" id="connectionStatus">&#9679; ESP32 disconnected</div>
+        <div class="pill"><span class="rec-dot" id="recDot"></span><span id="recordingStatus">Not recording</span></div>
+        <div class="pill" id="recordedCount">Recorded samples: 0</div>
+        <div class="pill" id="dataFolderStatus">Save folder: not selected</div>
+    </div>
+
+    <div class="cards">
+        <div class="card">
+            <div class="card-title">HEART RATE</div>
+            <span id="bpmValue" class="value green">--</span> <span class="unit">BPM</span>
+        </div>
+        <div class="card">
+            <div class="card-title">TEMPERATURE</div>
+            <span id="tempValue" class="value orange">--</span> <span class="unit">&deg;F</span>
+        </div>
+        <div class="card">
+            <div class="card-title">BLOOD OXYGEN</div>
+            <span id="spo2Value" class="value blue">--</span> <span class="unit">%</span>
+        </div>
+        <div class="card">
+            <div class="card-title">LUB-DUB COUNT</div>
+            <span id="lubdubValue" class="value pink">0</span>
+        </div>
+        <div class="card">
+            <div class="card-title">SIGNAL QUALITY</div>
+            <span id="qualityValue" class="value purple">--</span> <span class="unit">%</span>
+        </div>
+        <div class="card">
+            <div class="card-title">CONTACT / FINGER</div>
+            <span id="contactValue" class="value teal" style="font-size:16px;">--</span>
+        </div>
+    </div>
+
+    <div class="chart-box">
+        <div class="chart-header">
+            <div class="chart-title">Heart Rate vs Time</div>
+            <div style="color:#22c55e;font-size:12px;">&#9679; LIVE</div>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="bpmLiveChart"></canvas></div>
+    </div>
+
+    <div class="chart-box">
+        <div class="chart-header">
+            <div class="chart-title">Blood Oxygen (SpO&#8322;) vs Time</div>
+            <div style="color:#22c55e;font-size:12px;">&#9679; LIVE</div>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="spo2LiveChart"></canvas></div>
+    </div>
+
+    <div class="chart-box">
+        <div class="chart-header">
+            <div class="chart-title">Temperature vs Time</div>
+            <div style="color:#22c55e;font-size:12px;">&#9679; LIVE</div>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="tempLiveChart"></canvas></div>
+    </div>
+
+    <div class="analysis-section" id="analysisSection">
+        <h2>Recorded Session Analysis</h2>
+        <div id="analysisSummary"></div>
+
+        <h3>Vital Sign Statistics</h3>
+        <table class="stat-table" id="statTable"></table>
+
+        <h3>Heart Rate Variability (from Lub-Dub beat timing)</h3>
+        <table class="stat-table" id="hrvTable"></table>
+
+        <div class="mini-charts">
+            <div class="mini-chart-box">
+                <div class="chart-title">BPM Distribution (Histogram)</div>
+                <div class="mini-chart-canvas-wrap"><canvas id="bpmHistChart"></canvas></div>
+            </div>
+            <div class="mini-chart-box">
+                <div class="chart-title">Poincar&eacute; Plot (RR<sub>n</sub> vs RR<sub>n+1</sub>)</div>
+                <div class="mini-chart-canvas-wrap"><canvas id="poincareChart"></canvas></div>
+            </div>
+            <div class="mini-chart-box" style="grid-column: span 2;">
+                <div class="chart-title">Heart Rate vs SpO&#8322; Correlation</div>
+                <div class="mini-chart-canvas-wrap"><canvas id="correlationChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="serial-box">
+        <h3>ESP32 Serial Data</h3>
+        <div class="serial-output" id="serialOutput">Waiting for serial connection...</div>
+        <div class="note">Requires Google Chrome or Microsoft Edge (Web Serial API + File System Access API).</div>
+    </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+
+// ======================================================================
+// TELEGRAM SETTINGS - fill these in with your own bot before use
+// ======================================================================
+const TELEGRAM_BOT_TOKEN = "8962123258:AAFHRYmc-KnZgkBsi7g2lEpKtQy7DFiskc0";
+const TELEGRAM_CHAT_ID   = "6293775127";
+
+function telegramConfigured() {
+    return TELEGRAM_BOT_TOKEN !== "YOUR_BOT_TOKEN" && TELEGRAM_CHAT_ID !== "YOUR_CHAT_ID";
+}
+
+// ======================================================================
+// SERIAL STATE
+// ======================================================================
+let port = null;
+let reader = null;
+let keepReading = false;
+let connected = false;
+
+let connectStartEspMs = null;   // first ESP32 timestamp seen after connecting (for live chart x-axis)
+
+// ======================================================================
+// RECORDING STATE
+// ======================================================================
+let isRecording = false;
+let recordStartEspMs = null;    // ESP32 timestamp at the moment Record was pressed
+let recordStartWallClock = null;
+let recordedLog = [];           // full-resolution samples while recording
+let recordedBeatTimes = [];     // ESP32 timestamps (ms) of BEAT events while recording
+
+// ======================================================================
+// LIVE CHART BUFFERS (always active once connected, independent of recording)
+// ======================================================================
+const LIVE_WINDOW_SECONDS = 60;
+let liveBpm = [];   // {x: seconds, y: value}
+let liveSpo2 = [];
+let liveTemp = [];
+let sampleDecimateCounter = 0;
+
+// ======================================================================
+// CHART.JS INSTANCES (live)
+// ======================================================================
+function makeLiveChart(canvasId, label, color, yLabel, yMin, yMax) {
+    const ctx = document.getElementById(canvasId).getContext("2d");
+    return new Chart(ctx, {
+        type: "line",
+        data: { datasets: [{
+            label: label,
+            data: [],
+            borderColor: color,
+            backgroundColor: color,
+            pointRadius: 0,
+            borderWidth: 2,
+            tension: 0.25
+        }]},
+        options: {
+            animation: false,
+            responsive: true,
+            maintainAspectRatio: false,
+            parsing: false,
+            scales: {
+                x: {
+                    type: "linear",
+                    title: { display: true, text: "Time (seconds since connect)", color: "#9fb1c6" },
+                    ticks: { color: "#9fb1c6" },
+                    grid: { color: "#1b2c40" }
+                },
+                y: {
+                    title: { display: true, text: yLabel, color: "#9fb1c6" },
+                    ticks: { color: "#9fb1c6" },
+                    grid: { color: "#1b2c40" },
+                    min: yMin,
+                    max: yMax
+                }
+            },
+            plugins: { legend: { labels: { color: "#c9d6e3" } } }
+        }
+    });
+}
+
+const bpmLiveChart  = makeLiveChart("bpmLiveChart", "BPM", "#22c55e", "Heart Rate (BPM)", 30, 200);
+const spo2LiveChart = makeLiveChart("spo2LiveChart", "SpO2", "#38bdf8", "SpO2 (%)", 60, 100);
+const tempLiveChart = makeLiveChart("tempLiveChart", "Temp", "#f59e0b", "Temperature (deg F)", 90, 106);
+
+setInterval(function() {
+    if (!connected) return;
+    bpmLiveChart.data.datasets[0].data = liveBpm;
+    spo2LiveChart.data.datasets[0].data = liveSpo2;
+    tempLiveChart.data.datasets[0].data = liveTemp;
+    bpmLiveChart.update("none");
+    spo2LiveChart.update("none");
+    tempLiveChart.update("none");
+}, 250);
+
+// ======================================================================
+// CONNECT / DISCONNECT
+// ======================================================================
+async function connectESP32() {
+
+    if (!("serial" in navigator)) {
+        alert("Web Serial is not supported.\n\nOpen this webpage using Google Chrome or Microsoft Edge.");
+        return;
+    }
+
+    try {
+        port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 115200 });
+
+        keepReading = true;
+        connected = true;
+        connectStartEspMs = null;
+
+        document.getElementById("connectionStatus").textContent = "\u25CF ESP32 connected";
+        document.getElementById("connectionStatus").style.color = "#22c55e";
+
+        readSerial();
+
+    } catch (error) {
+        console.error(error);
+        alert("Could not connect to ESP32.\n\nMake sure the Arduino Serial Monitor is closed.");
+    }
+}
+
+async function disconnectESP32() {
+    keepReading = false;
+    connected = false;
+
+    if (isRecording) {
+        stopRecording();
+    }
+
+    try { if (reader) await reader.cancel(); } catch (e) {}
+    try { if (port) await port.close(); } catch (e) {}
+
+    reader = null;
+    port = null;
+
+    document.getElementById("connectionStatus").textContent = "\u25CF ESP32 disconnected";
+    document.getElementById("connectionStatus").style.color = "#9fb1c6";
+}
+
+async function readSerial() {
+    const decoder = new TextDecoderStream();
+    const readableStreamClosed = port.readable.pipeTo(decoder.writable);
+    reader = decoder.readable.getReader();
+
+    let buffer = "";
+
+    try {
+        while (keepReading) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            if (value) {
+                buffer += value;
+                let lines = buffer.split("\n");
+                buffer = lines.pop();
+
+                for (let line of lines) {
+                    line = line.trim();
+                    if (line.length > 0) processSerialLine(line);
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Serial error:", error);
+    } finally {
+        try { reader.releaseLock(); } catch (e) {}
+    }
+}
+
+// ======================================================================
+// SERIAL LINE PARSING
+// ======================================================================
+function logSerialLine(line) {
+    const box = document.getElementById("serialOutput");
+    if (box.textContent === "Waiting for serial connection...") box.textContent = "";
+    box.textContent += line + "\n";
+    box.scrollTop = box.scrollHeight;
+}
+
+function processSerialLine(line) {
+
+    if (line.startsWith("STATUS,")) {
+        logSerialLine(line);
+        return;
+    }
+
+    if (line.startsWith("BEAT,")) {
+        const t = parseInt(line.substring(5));
+        if (!isNaN(t) && isRecording) {
+            recordedBeatTimes.push(t);
+        }
+        return;
+    }
+
+    // Otherwise treat as CSV data line:
+    // timestamp_ms,bpm,heartWaveform,tempF,spo2,signalQuality,contactOK,lubdubCount,fingerPresent
+    const parts = line.split(",");
+    if (parts.length < 9) return;
+
+    const t_ms          = parseInt(parts[0]);
+    const bpm            = parseFloat(parts[1]);
+    const tempF          = parseFloat(parts[3]);
+    const spo2            = parseFloat(parts[4]);
+    const signalQuality  = parseFloat(parts[5]);
+    const contactOK      = parts[6] === "1";
+    const lubdubCount    = parseInt(parts[7]);
+    const fingerPresent  = parts[8] === "1";
+
+    if (isNaN(t_ms)) return;
+
+    if (connectStartEspMs === null) connectStartEspMs = t_ms;
+    const elapsedLive = (t_ms - connectStartEspMs) / 1000;
+
+    // ---- Update live UI cards ----
+    document.getElementById("bpmValue").textContent  = (bpm > 0) ? bpm.toFixed(0) : "--";
+    document.getElementById("tempValue").textContent = tempF.toFixed(1);
+    document.getElementById("spo2Value").textContent = (spo2 > 0) ? spo2.toFixed(0) : "--";
+    document.getElementById("lubdubValue").textContent = lubdubCount;
+    document.getElementById("qualityValue").textContent = signalQuality.toFixed(0);
+
+    const contactEl = document.getElementById("contactValue");
+    if (!contactOK) {
+        contactEl.textContent = "No wrist contact";
+        contactEl.style.color = "#f59e0b";
+    } else if (!fingerPresent) {
+        contactEl.textContent = "Contact OK / No finger";
+        contactEl.style.color = "#38bdf8";
+    } else {
+        contactEl.textContent = "Contact OK / Finger OK";
+        contactEl.style.color = "#22c55e";
+    }
+
+    // ---- Live chart buffers (decimated for performance) ----
+    sampleDecimateCounter++;
+    if (sampleDecimateCounter % 4 === 0) {
+        liveBpm.push({ x: elapsedLive, y: bpm > 0 ? bpm : null });
+        liveSpo2.push({ x: elapsedLive, y: spo2 > 0 ? spo2 : null });
+        liveTemp.push({ x: elapsedLive, y: tempF });
+
+        const cutoff = elapsedLive - LIVE_WINDOW_SECONDS;
+        while (liveBpm.length && liveBpm[0].x < cutoff) liveBpm.shift();
+        while (liveSpo2.length && liveSpo2[0].x < cutoff) liveSpo2.shift();
+        while (liveTemp.length && liveTemp[0].x < cutoff) liveTemp.shift();
+    }
+
+    // ---- Recording ----
+    if (isRecording) {
+        if (recordStartEspMs === null) recordStartEspMs = t_ms;
+        const elapsedRec = (t_ms - recordStartEspMs) / 1000;
+
+        recordedLog.push({
+            t_ms: t_ms,
+            elapsed_s: elapsedRec,
+            timestamp: new Date().toLocaleString(),
+            bpm: bpm,
+            tempF: tempF,
+            spo2: spo2,
+            signalQuality: signalQuality,
+            contactOK: contactOK,
+            fingerPresent: fingerPresent,
+            lubdubCount: lubdubCount
+        });
+
+        document.getElementById("recordedCount").textContent = "Recorded samples: " + recordedLog.length;
+    }
+}
+
+// ======================================================================
+// RECORD / STOP RECORDING
+// ======================================================================
+function startRecording() {
+    if (!connected) {
+        alert("Connect to the ESP32 first.");
+        return;
+    }
+    isRecording = true;
+    recordStartEspMs = null;
+    recordStartWallClock = new Date();
+    recordedLog = [];
+    recordedBeatTimes = [];
+
+    document.getElementById("recDot").classList.add("active");
+    document.getElementById("recordingStatus").textContent = "Recording...";
+    document.getElementById("recordedCount").textContent = "Recorded samples: 0";
+    document.getElementById("btnRecord").disabled = true;
+    document.getElementById("btnStop").disabled = false;
+}
+
+function stopRecording() {
+    isRecording = false;
+    document.getElementById("recDot").classList.remove("active");
+    document.getElementById("recordingStatus").textContent = "Stopped (" + recordedLog.length + " samples captured)";
+    document.getElementById("btnRecord").disabled = false;
+    document.getElementById("btnStop").disabled = true;
+}
+
+// ======================================================================
+// DATA FOLDER (File System Access API) - lets exports save straight into
+// a chosen folder (e.g. a "data" folder on D:\) instead of the Downloads
+// folder. Only supported in Chromium browsers; falls back to a normal
+// browser download everywhere else.
+// ======================================================================
+let dataDirHandle = null;
+
+function idbOpen() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open("health-monitor-fs", 1);
+        req.onupgradeneeded = () => req.result.createObjectStore("handles");
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+async function idbGetHandle() {
+    try {
+        const db = await idbOpen();
+        return await new Promise((resolve) => {
+            const tx = db.transaction("handles", "readonly");
+            const req = tx.objectStore("handles").get("dataDir");
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+        });
+    } catch (e) { return null; }
+}
+
+async function idbSetHandle(handle) {
+    try {
+        const db = await idbOpen();
+        const tx = db.transaction("handles", "readwrite");
+        tx.objectStore("handles").put(handle, "dataDir");
+    } catch (e) {}
+}
+
+async function ensureDataDirHandle() {
+    if (!("showDirectoryPicker" in window)) return null;
+
+    if (dataDirHandle) {
+        if ((await dataDirHandle.queryPermission({ mode: "readwrite" })) === "granted") return dataDirHandle;
+        if ((await dataDirHandle.requestPermission({ mode: "readwrite" })) === "granted") return dataDirHandle;
+    }
+
+    const stored = await idbGetHandle();
+    if (stored) {
+        try {
+            if ((await stored.queryPermission({ mode: "readwrite" })) === "granted" ||
+                (await stored.requestPermission({ mode: "readwrite" })) === "granted") {
+                dataDirHandle = stored;
+                document.getElementById("dataFolderStatus").textContent = "Save folder: " + stored.name;
+                return dataDirHandle;
+            }
+        } catch (e) {}
+    }
+
+    try {
+        const handle = await window.showDirectoryPicker({ mode: "readwrite" });
+        dataDirHandle = handle;
+        await idbSetHandle(handle);
+        document.getElementById("dataFolderStatus").textContent = "Save folder: " + handle.name;
+        return handle;
+    } catch (e) {
+        return null;
+    }
+}
+
+async function saveBlobToDataFolder(filename, blob) {
+    const dirHandle = await ensureDataDirHandle();
+
+    if (dirHandle) {
+        try {
+            const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            return;
+        } catch (e) {
+            console.error("Folder save failed, falling back to download:", e);
+        }
+    }
+
+    // Fallback: normal browser download (goes to the Downloads folder;
+    // the user can move it into D:\data manually).
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// ======================================================================
+// STATISTICS HELPERS
+// ======================================================================
+function mean(arr) { return arr.length ? arr.reduce((a,b) => a+b, 0) / arr.length : 0; }
+
+function stdDev(arr) {
+    if (arr.length < 2) return 0;
+    const m = mean(arr);
+    return Math.sqrt(arr.reduce((s,v) => s + (v-m)*(v-m), 0) / (arr.length - 1));
+}
+
+function linRegSlope(xs, ys) {
+    const n = xs.length;
+    if (n < 2) return 0;
+    const mx = mean(xs), my = mean(ys);
+    let num = 0, den = 0;
+    for (let i = 0; i < n; i++) { num += (xs[i]-mx)*(ys[i]-my); den += (xs[i]-mx)*(xs[i]-mx); }
+    return den === 0 ? 0 : num/den;
+}
+
+function pearson(xs, ys) {
+    const n = xs.length;
+    if (n < 2) return 0;
+    const mx = mean(xs), my = mean(ys);
+    let num = 0, dx = 0, dy = 0;
+    for (let i = 0; i < n; i++) {
+        num += (xs[i]-mx)*(ys[i]-my);
+        dx += (xs[i]-mx)*(xs[i]-mx);
+        dy += (ys[i]-my)*(ys[i]-my);
+    }
+    const den = Math.sqrt(dx*dy);
+    return den === 0 ? 0 : num/den;
+}
+
+// ======================================================================
+// ANALYSIS COMPUTATION
+// ======================================================================
+function computeAnalysis() {
+
+    const log = recordedLog;
+    const beats = recordedBeatTimes;
+
+    const bpmVals  = log.map(r => r.bpm).filter(v => v > 0);
+    const spo2Vals = log.map(r => r.spo2).filter(v => v > 0);
+    const tempVals = log.map(r => r.tempF);
+    const elapsedVals = log.map(r => r.elapsed_s);
+
+    const durationSec = log.length ? log[log.length-1].elapsed_s - log[0].elapsed_s : 0;
+
+    // RR intervals (ms) between consecutive lub-dub beats
+    const rr = [];
+    for (let i = 1; i < beats.length; i++) rr.push(beats[i] - beats[i-1]);
+
+    // HRV metrics
+    const sdnn = stdDev(rr);
+    let rmssdSum = 0;
+    for (let i = 1; i < rr.length; i++) rmssdSum += Math.pow(rr[i]-rr[i-1], 2);
+    const rmssd = rr.length > 1 ? Math.sqrt(rmssdSum / (rr.length - 1)) : 0;
+    let nn50 = 0;
+    for (let i = 1; i < rr.length; i++) if (Math.abs(rr[i]-rr[i-1]) > 50) nn50++;
+    const pnn50 = rr.length > 1 ? (nn50 / (rr.length - 1)) * 100 : 0;
+    const avgRR = mean(rr);
+    const beatDerivedBPM = avgRR > 0 ? 60000 / avgRR : 0;
+
+    // SpO2 desaturation index
+    const pctBelow90 = spo2Vals.length ? (spo2Vals.filter(v => v < 90).length / spo2Vals.length) * 100 : 0;
+    const pctBelow95 = spo2Vals.length ? (spo2Vals.filter(v => v < 95).length / spo2Vals.length) * 100 : 0;
+
+    // Temperature trend (deg F per minute)
+    const tempSlopePerSec = linRegSlope(elapsedVals, tempVals);
+    const tempSlopePerMin = tempSlopePerSec * 60;
+    const maxTemp = tempVals.length ? Math.max(...tempVals) : 0;
+    const feverFlag = maxTemp >= 100.4;
+
+    // Data quality
+    const pctContactOK = log.length ? (log.filter(r => r.contactOK).length / log.length) * 100 : 0;
+    const pctFingerOK  = log.length ? (log.filter(r => r.fingerPresent).length / log.length) * 100 : 0;
+
+    // Correlation: BPM vs SpO2 (paired samples where both are valid)
+    const pairedBpm = [], pairedSpo2 = [];
+    log.forEach(r => { if (r.bpm > 0 && r.spo2 > 0) { pairedBpm.push(r.bpm); pairedSpo2.push(r.spo2); } });
+    const bpmSpo2Corr = pearson(pairedBpm, pairedSpo2);
+
+    return {
+        durationSec, sampleCount: log.length,
+        bpm: { mean: mean(bpmVals), min: bpmVals.length?Math.min(...bpmVals):0, max: bpmVals.length?Math.max(...bpmVals):0, sd: stdDev(bpmVals) },
+        spo2: { mean: mean(spo2Vals), min: spo2Vals.length?Math.min(...spo2Vals):0, max: spo2Vals.length?Math.max(...spo2Vals):0, sd: stdDev(spo2Vals), pctBelow90, pctBelow95 },
+        temp: { mean: mean(tempVals), min: tempVals.length?Math.min(...tempVals):0, max: maxTemp, sd: stdDev(tempVals), trendPerMin: tempSlopePerMin, feverFlag },
+        lubdub: { totalBeats: beats.length, avgRR_ms: avgRR, beatDerivedBPM },
+        hrv: { sdnn, rmssd, pnn50, rrCount: rr.length },
+        quality: { pctContactOK, pctFingerOK },
+        correlation: { bpmVsSpo2: bpmSpo2Corr, pairCount: pairedBpm.length },
+        bpmVals, spo2Vals, tempVals, elapsedVals, rr
+    };
+}
+
+function fmt(n, d) { return isFinite(n) ? n.toFixed(d) : "--"; }
+
+// ======================================================================
+// SHOW ANALYSIS (on-page)
+// ======================================================================
+let miniCharts = {};
+
+function showAnalysis() {
+    if (recordedLog.length === 0) {
+        alert("No recorded data yet. Press Record, capture some data, then Stop Recording.");
+        return;
+    }
+
+    const a = computeAnalysis();
+    const section = document.getElementById("analysisSection");
+    section.style.display = "block";
+
+    document.getElementById("analysisSummary").innerHTML =
+        "<p>Recording duration: " + fmt(a.durationSec,1) + " s &middot; Samples: " + a.sampleCount +
+        " &middot; Lub-Dub beats detected: " + a.lubdub.totalBeats + "</p>";
+
+    document.getElementById("statTable").innerHTML =
+        "<tr><th>Vital</th><th>Mean</th><th>Min</th><th>Max</th><th>Std Dev</th><th>Notes</th></tr>" +
+        "<tr><td>Heart Rate (BPM)</td><td>"+fmt(a.bpm.mean,1)+"</td><td>"+fmt(a.bpm.min,0)+"</td><td>"+fmt(a.bpm.max,0)+"</td><td>"+fmt(a.bpm.sd,1)+"</td><td>Beat-derived avg: "+fmt(a.lubdub.beatDerivedBPM,1)+" BPM</td></tr>" +
+        "<tr><td>SpO2 (%)</td><td>"+fmt(a.spo2.mean,1)+"</td><td>"+fmt(a.spo2.min,0)+"</td><td>"+fmt(a.spo2.max,0)+"</td><td>"+fmt(a.spo2.sd,1)+"</td><td>"+fmt(a.spo2.pctBelow90,1)+"% of readings below 90%</td></tr>" +
+        "<tr><td>Temperature (deg F)</td><td>"+fmt(a.temp.mean,2)+"</td><td>"+fmt(a.temp.min,2)+"</td><td>"+fmt(a.temp.max,2)+"</td><td>"+fmt(a.temp.sd,2)+"</td><td>Trend: "+fmt(a.temp.trendPerMin,3)+" deg F/min"+(a.temp.feverFlag?" - max reading at/above 100.4F":"")+"</td></tr>";
+
+    document.getElementById("hrvTable").innerHTML =
+        "<tr><th>Metric</th><th>Value</th><th>Meaning</th></tr>" +
+        "<tr><td>SDNN</td><td>"+fmt(a.hrv.sdnn,1)+" ms</td><td>Overall RR-interval variability</td></tr>" +
+        "<tr><td>RMSSD</td><td>"+fmt(a.hrv.rmssd,1)+" ms</td><td>Short-term (beat-to-beat) variability</td></tr>" +
+        "<tr><td>pNN50</td><td>"+fmt(a.hrv.pnn50,1)+" %</td><td>Share of successive RR differences over 50ms</td></tr>" +
+        "<tr><td>RR intervals used</td><td>"+a.hrv.rrCount+"</td><td>From "+a.lubdub.totalBeats+" detected lub-dub beats</td></tr>" +
+        "<tr><td>BPM vs SpO2 correlation</td><td>"+fmt(a.correlation.bpmVsSpo2,3)+"</td><td>Pearson r over "+a.correlation.pairCount+" paired samples</td></tr>" +
+        "<tr><td>Sensor contact quality</td><td>"+fmt(a.quality.pctContactOK,1)+"% contact / "+fmt(a.quality.pctFingerOK,1)+"% finger</td><td>Share of recording with valid sensor contact</td></tr>";
+
+    Object.values(miniCharts).forEach(c => c.destroy());
+    miniCharts = {};
+
+    // Histogram of BPM
+    const bins = 10;
+    const validBpm = a.bpmVals;
+    if (validBpm.length) {
+        const minV = Math.min(...validBpm), maxV = Math.max(...validBpm);
+        const width = Math.max(1, (maxV - minV) / bins);
+        const counts = new Array(bins).fill(0);
+        const labels = [];
+        for (let i = 0; i < bins; i++) labels.push(Math.round(minV + i*width) + "-" + Math.round(minV + (i+1)*width));
+        validBpm.forEach(v => {
+            let idx = Math.floor((v - minV) / width);
+            if (idx >= bins) idx = bins - 1;
+            if (idx < 0) idx = 0;
+            counts[idx]++;
+        });
+        miniCharts.hist = new Chart(document.getElementById("bpmHistChart").getContext("2d"), {
+            type: "bar",
+            data: { labels: labels, datasets: [{ label: "Samples", data: counts, backgroundColor: "#22c55e" }] },
+            options: chartOptions("BPM range", "Sample count")
+        });
+    }
+
+    // Poincare plot
+    const rr = a.rr;
+    const poincarePoints = [];
+    for (let i = 1; i < rr.length; i++) poincarePoints.push({ x: rr[i-1], y: rr[i] });
+    miniCharts.poincare = new Chart(document.getElementById("poincareChart").getContext("2d"), {
+        type: "scatter",
+        data: { datasets: [{ label: "RRn vs RRn+1", data: poincarePoints, backgroundColor: "#c084fc" }] },
+        options: chartOptions("RR(n) (ms)", "RR(n+1) (ms)")
+    });
+
+    // Correlation scatter
+    const corrPoints = [];
+    recordedLog.forEach(r => { if (r.bpm > 0 && r.spo2 > 0) corrPoints.push({ x: r.bpm, y: r.spo2 }); });
+    miniCharts.corr = new Chart(document.getElementById("correlationChart").getContext("2d"), {
+        type: "scatter",
+        data: { datasets: [{ label: "BPM vs SpO2", data: corrPoints, backgroundColor: "#38bdf8" }] },
+        options: chartOptions("Heart Rate (BPM)", "SpO2 (%)")
+    });
+
+    section.scrollIntoView({ behavior: "smooth" });
+}
+
+function chartOptions(xLabel, yLabel) {
+    return {
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            x: { title: { display: true, text: xLabel, color: "#9fb1c6" }, ticks: { color: "#9fb1c6" }, grid: { color: "#1b2c40" } },
+            y: { title: { display: true, text: yLabel, color: "#9fb1c6" }, ticks: { color: "#9fb1c6" }, grid: { color: "#1b2c40" } }
+        },
+        plugins: { legend: { labels: { color: "#c9d6e3" } } }
+    };
+}
+
+// ======================================================================
+// SAVE ANALYSIS (plain text dump of the on-screen numbers)
+// ======================================================================
+async function saveAnalysis() {
+    if (recordedLog.length === 0) {
+        alert("No recorded data yet. Press Record, capture some data, then Stop Recording.");
+        return;
+    }
+
+    const a = computeAnalysis();
+    let text = "ESP32 Health Monitor - Session Analysis\n";
+    text += "Generated: " + new Date().toLocaleString() + "\n";
+    text += "Duration: " + fmt(a.durationSec,1) + " s | Samples: " + a.sampleCount + "\n\n";
+
+    text += "-- Heart Rate --\n";
+    text += "Mean: " + fmt(a.bpm.mean,1) + " BPM | Min: " + fmt(a.bpm.min,0) + " | Max: " + fmt(a.bpm.max,0) + " | SD: " + fmt(a.bpm.sd,1) + "\n";
+    text += "Lub-Dub beats detected: " + a.lubdub.totalBeats + " | Beat-derived avg BPM: " + fmt(a.lubdub.beatDerivedBPM,1) + "\n\n";
+
+    text += "-- SpO2 --\n";
+    text += "Mean: " + fmt(a.spo2.mean,1) + "% | Min: " + fmt(a.spo2.min,0) + "% | Max: " + fmt(a.spo2.max,0) + "% | SD: " + fmt(a.spo2.sd,1) + "\n";
+    text += "% readings below 90%: " + fmt(a.spo2.pctBelow90,1) + "% | below 95%: " + fmt(a.spo2.pctBelow95,1) + "%\n\n";
+
+    text += "-- Temperature --\n";
+    text += "Mean: " + fmt(a.temp.mean,2) + " F | Min: " + fmt(a.temp.min,2) + " F | Max: " + fmt(a.temp.max,2) + " F | SD: " + fmt(a.temp.sd,2) + "\n";
+    text += "Trend: " + fmt(a.temp.trendPerMin,3) + " F/min" + (a.temp.feverFlag ? " (max reading at/above 100.4F)" : "") + "\n\n";
+
+    text += "-- Heart Rate Variability --\n";
+    text += "SDNN: " + fmt(a.hrv.sdnn,1) + " ms | RMSSD: " + fmt(a.hrv.rmssd,1) + " ms | pNN50: " + fmt(a.hrv.pnn50,1) + "%\n\n";
+
+    text += "-- Correlation --\n";
+    text += "BPM vs SpO2 (Pearson r): " + fmt(a.correlation.bpmVsSpo2,3) + " over " + a.correlation.pairCount + " paired samples\n\n";
+
+    text += "-- Sensor Contact Quality --\n";
+    text += "Contact OK: " + fmt(a.quality.pctContactOK,1) + "% of recording | Finger OK: " + fmt(a.quality.pctFingerOK,1) + "% of recording\n";
+
+    const blob = new Blob([text], { type: "text/plain" });
+    await saveBlobToDataFolder("analysis_" + Date.now() + ".txt", blob);
+}
+
+// ======================================================================
+// CHART IMAGE CAPTURE HELPER (for embedding into PDFs)
+// ======================================================================
+async function captureChartImage(config, width, height) {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    canvas.style.display = "none";
+    document.body.appendChild(canvas);
+
+    const chart = new Chart(canvas.getContext("2d"), Object.assign({}, config, {
+        options: Object.assign({}, config.options, { animation: false, responsive: false })
+    }));
+
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+    const img = chart.toBase64Image();
+    chart.destroy();
+    document.body.removeChild(canvas);
+    return img;
+}
+
+function lineChartConfig(label, points, color, xLabel, yLabel) {
+    return {
+        type: "line",
+        data: { datasets: [{ label: label, data: points, borderColor: color, backgroundColor: color, pointRadius: 0, borderWidth: 2 }] },
+        options: {
+            scales: {
+                x: { type: "linear", title: { display: true, text: xLabel, color: "#111" }, ticks: { color: "#111" }, grid: { color: "#ddd" } },
+                y: { title: { display: true, text: yLabel, color: "#111" }, ticks: { color: "#111" }, grid: { color: "#ddd" } }
+            },
+            plugins: { legend: { labels: { color: "#111" } } },
+            backgroundColor: "#ffffff"
+        }
+    };
+}
+
+// ======================================================================
+// EXPORT PDF (graphs + basic stats table)
+// ======================================================================
+async function exportPDF() {
+    if (recordedLog.length === 0) {
+        alert("No recorded data yet. Press Record, capture some data, then Stop Recording.");
+        return;
+    }
+
+    const a = computeAnalysis();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(18);
+    doc.text("ESP32 Health Monitor - Session Report", 14, 18);
+    doc.setFontSize(10);
+    doc.text("Generated: " + new Date().toLocaleString(), 14, 25);
+    doc.text("Duration: " + fmt(a.durationSec,1) + " s   Samples: " + a.sampleCount + "   Lub-Dub beats: " + a.lubdub.totalBeats, 14, 30);
+
+    doc.setFontSize(12);
+    doc.text("Summary Statistics", 14, 42);
+    doc.setFontSize(9);
+    let y = 49;
+    const rows = [
+        ["Heart Rate (BPM)", fmt(a.bpm.mean,1), fmt(a.bpm.min,0), fmt(a.bpm.max,0), fmt(a.bpm.sd,1)],
+        ["SpO2 (%)", fmt(a.spo2.mean,1), fmt(a.spo2.min,0), fmt(a.spo2.max,0), fmt(a.spo2.sd,1)],
+        ["Temperature (deg F)", fmt(a.temp.mean,2), fmt(a.temp.min,2), fmt(a.temp.max,2), fmt(a.temp.sd,2)]
+    ];
+    doc.text("Vital", 14, y); doc.text("Mean", 90, y); doc.text("Min", 115, y); doc.text("Max", 140, y); doc.text("SD", 165, y);
+    y += 5; doc.line(14, y, 196, y); y += 6;
+    rows.forEach(r => {
+        doc.text(r[0], 14, y); doc.text(r[1], 90, y); doc.text(r[2], 115, y); doc.text(r[3], 140, y); doc.text(r[4], 165, y);
+        y += 7;
+    });
+
+    const bpmImg  = await captureChartImage(lineChartConfig("BPM vs Time", a.elapsedVals.map((x,i)=>({x, y: recordedLog[i].bpm > 0 ? recordedLog[i].bpm : null})), "#16a34a", "Time (s)", "BPM"), 900, 400);
+    const spo2Img = await captureChartImage(lineChartConfig("SpO2 vs Time", a.elapsedVals.map((x,i)=>({x, y: recordedLog[i].spo2 > 0 ? recordedLog[i].spo2 : null})), "#0284c7", "Time (s)", "SpO2 (%)"), 900, 400);
+    const tempImg = await captureChartImage(lineChartConfig("Temperature vs Time", a.elapsedVals.map((x,i)=>({x, y: recordedLog[i].tempF})), "#d97706", "Time (s)", "Temp (deg F)"), 900, 400);
+
+    doc.addPage();
+    doc.setFontSize(13); doc.text("Heart Rate vs Time", 14, 15);
+    doc.addImage(bpmImg, "PNG", 14, 20, 182, 81);
+
+    doc.setFontSize(13); doc.text("SpO2 vs Time", 14, 108);
+    doc.addImage(spo2Img, "PNG", 14, 113, 182, 81);
+
+    doc.addPage();
+    doc.setFontSize(13); doc.text("Temperature vs Time", 14, 15);
+    doc.addImage(tempImg, "PNG", 14, 20, 182, 81);
+
+    const blob = doc.output("blob");
+    await saveBlobToDataFolder("health_report_" + Date.now() + ".pdf", blob);
+}
+
+// ======================================================================
+// EXPORT EXCEL
+// ======================================================================
+async function exportExcel() {
+    if (recordedLog.length === 0) {
+        alert("No recorded data yet. Press Record, capture some data, then Stop Recording.");
+        return;
+    }
+
+    const wsData = recordedLog.map(r => ({
+        "Timestamp": r.timestamp,
+        "Elapsed (s)": r.elapsed_s.toFixed(2),
+        "Heart Rate (BPM)": r.bpm,
+        "SpO2 (%)": r.spo2,
+        "Temperature (deg F)": r.tempF,
+        "Signal Quality (%)": r.signalQuality,
+        "Contact OK": r.contactOK ? "Yes" : "No",
+        "Finger Present": r.fingerPresent ? "Yes" : "No",
+        "Cumulative Lub-Dub Count": r.lubdubCount
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Readings");
+
+    const a = computeAnalysis();
+    const summarySheet = XLSX.utils.aoa_to_sheet([
+        ["Metric", "Value"],
+        ["Duration (s)", a.durationSec.toFixed(1)],
+        ["Samples", a.sampleCount],
+        ["Lub-Dub beats", a.lubdub.totalBeats],
+        ["BPM mean/min/max/SD", fmt(a.bpm.mean,1)+"/"+fmt(a.bpm.min,0)+"/"+fmt(a.bpm.max,0)+"/"+fmt(a.bpm.sd,1)],
+        ["SpO2 mean/min/max/SD", fmt(a.spo2.mean,1)+"/"+fmt(a.spo2.min,0)+"/"+fmt(a.spo2.max,0)+"/"+fmt(a.spo2.sd,1)],
+        ["Temp mean/min/max/SD (F)", fmt(a.temp.mean,2)+"/"+fmt(a.temp.min,2)+"/"+fmt(a.temp.max,2)+"/"+fmt(a.temp.sd,2)],
+        ["SDNN (ms)", fmt(a.hrv.sdnn,1)],
+        ["RMSSD (ms)", fmt(a.hrv.rmssd,1)],
+        ["pNN50 (%)", fmt(a.hrv.pnn50,1)],
+        ["BPM vs SpO2 correlation (r)", fmt(a.correlation.bpmVsSpo2,3)]
+    ]);
+    XLSX.utils.book_append_sheet(wb, summarySheet, "Summary");
+
+    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([wbout], { type: "application/octet-stream" });
+    await saveBlobToDataFolder("health_data_" + Date.now() + ".xlsx", blob);
+}
+
+// ======================================================================
+// EXPORT FULL ANALYSIS PDF (graphs + theory + calculations)
+// ======================================================================
+async function exportFullAnalysisPDF() {
+    if (recordedLog.length === 0) {
+        alert("No recorded data yet. Press Record, capture some data, then Stop Recording.");
+        return;
+    }
+
+    const a = computeAnalysis();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    let y;
+
+    function heading(text, size) {
+        doc.setFontSize(size);
+        doc.setFont(undefined, "bold");
+        doc.text(text, 14, y);
+        doc.setFont(undefined, "normal");
+        y += size === 16 ? 8 : 6;
+    }
+    function body(text, size) {
+        doc.setFontSize(size || 9.5);
+        const lines = doc.splitTextToSize(text, 182);
+        doc.text(lines, 14, y);
+        y += lines.length * (size ? size*0.42 : 4.2) + 3;
+    }
+    function ensureSpace(needed) {
+        if (y + needed > 285) { doc.addPage(); y = 18; }
+    }
+
+    // ---- Cover / summary ----
+    y = 20;
+    heading("ESP32 Health Monitor - Full Analysis Report", 16);
+    body("Generated: " + new Date().toLocaleString());
+    body("Recording duration: " + fmt(a.durationSec,1) + " s   |   Samples captured: " + a.sampleCount + "   |   Lub-Dub beats detected: " + a.lubdub.totalBeats);
+
+    ensureSpace(30);
+    heading("1. Methodology", 13);
+    body("Heart rate (BPM) is derived from an analog heart-sound sensor worn at the wrist. The raw signal has a slow-moving baseline removed, is rectified, and its envelope is tracked to set an adaptive peak-detection threshold. Each threshold crossing that respects a minimum 300ms refractory period is counted as one lub-dub heartbeat; consecutive beat timestamps give the beat-to-beat interval used for both instantaneous BPM and heart-rate-variability analysis.");
+    body("Body temperature is measured with an NTC thermistor in a voltage-divider circuit, converted to resistance and then to temperature using the Beta parameter equation (Steinhart-Hart simplified form), and reported in degrees Fahrenheit.");
+    body("SpO2 is estimated from the MAX30102 pulse oximeter using the classical ratio-of-ratios method: the AC (pulsatile) and DC (baseline) components of the red and infrared LED signals are tracked, their ratio R = (AC_red/DC_red)/(AC_ir/DC_ir) is computed, and SpO2 is approximated with the empirical linear formula SpO2 = 110 - 25R. The MAX30102's own heart-rate estimate is not used anywhere in this project; BPM comes exclusively from the wrist heart-sound sensor.");
+
+    ensureSpace(60);
+    heading("2. Vital Sign Statistics", 13);
+    doc.setFontSize(9.5);
+    doc.text("Vital", 14, y); doc.text("Mean", 80, y); doc.text("Min", 105, y); doc.text("Max", 130, y); doc.text("Std Dev", 155, y);
+    y += 5; doc.line(14, y, 196, y); y += 6;
+    const rows = [
+        ["Heart Rate (BPM)", fmt(a.bpm.mean,1), fmt(a.bpm.min,0), fmt(a.bpm.max,0), fmt(a.bpm.sd,1)],
+        ["SpO2 (%)", fmt(a.spo2.mean,1), fmt(a.spo2.min,0), fmt(a.spo2.max,0), fmt(a.spo2.sd,1)],
+        ["Temperature (deg F)", fmt(a.temp.mean,2), fmt(a.temp.min,2), fmt(a.temp.max,2), fmt(a.temp.sd,2)]
+    ];
+    rows.forEach(r => {
+        doc.text(r[0], 14, y); doc.text(r[1], 80, y); doc.text(r[2], 105, y); doc.text(r[3], 130, y); doc.text(r[4], 155, y);
+        y += 7;
+    });
+    y += 3;
+    body("SpO2 desaturation: " + fmt(a.spo2.pctBelow90,1) + "% of readings were below 90%, " + fmt(a.spo2.pctBelow95,1) + "% below 95%.");
+    body("Temperature trend: " + fmt(a.temp.trendPerMin,3) + " deg F/min over the session" + (a.temp.feverFlag ? " - the maximum reading reached/exceeded the 100.4 deg F fever threshold." : "."));
+
+    ensureSpace(70);
+    heading("3. Heart Rate Variability (HRV)", 13);
+    body("HRV is computed from the RR intervals (time between consecutive lub-dub beats). SDNN (standard deviation of NN intervals) reflects overall variability. RMSSD (root mean square of successive differences) reflects short-term, parasympathetically-driven variability: RMSSD = sqrt( mean( (RR[n+1]-RR[n])^2 ) ). pNN50 is the percentage of successive RR-interval differences greater than 50ms.");
+    doc.setFontSize(9.5);
+    doc.text("SDNN: " + fmt(a.hrv.sdnn,1) + " ms", 14, y); y += 6;
+    doc.text("RMSSD: " + fmt(a.hrv.rmssd,1) + " ms", 14, y); y += 6;
+    doc.text("pNN50: " + fmt(a.hrv.pnn50,1) + " %  (computed from " + a.hrv.rrCount + " RR intervals)", 14, y); y += 8;
+
+    ensureSpace(40);
+    heading("4. Correlation Analysis", 13);
+    body("The Pearson correlation coefficient r = Cov(BPM,SpO2) / (sigma_BPM * sigma_SpO2) measures the linear relationship between heart rate and blood oxygen across " + a.correlation.pairCount + " paired samples where both readings were valid.");
+    body("BPM vs SpO2 correlation: r = " + fmt(a.correlation.bpmVsSpo2,3) + ".");
+
+    ensureSpace(30);
+    heading("5. Data Quality", 13);
+    body("Wrist sensor contact was valid for " + fmt(a.quality.pctContactOK,1) + "% of the recording; the MAX30102 detected a finger for " + fmt(a.quality.pctFingerOK,1) + "% of the recording. Samples outside valid contact are excluded from the BPM/SpO2 statistics above.");
+
+    // ---- Graphs on new pages ----
+    const bpmImg  = await captureChartImage(lineChartConfig("BPM vs Time", a.elapsedVals.map((x,i)=>({x, y: recordedLog[i].bpm > 0 ? recordedLog[i].bpm : null})), "#16a34a", "Time (s)", "BPM"), 900, 400);
+    const spo2Img = await captureChartImage(lineChartConfig("SpO2 vs Time", a.elapsedVals.map((x,i)=>({x, y: recordedLog[i].spo2 > 0 ? recordedLog[i].spo2 : null})), "#0284c7", "Time (s)", "SpO2 (%)"), 900, 400);
+    const tempImg = await captureChartImage(lineChartConfig("Temperature vs Time", a.elapsedVals.map((x,i)=>({x, y: recordedLog[i].tempF})), "#d97706", "Time (s)", "Temp (deg F)"), 900, 400);
+
+    const histLabels = [];
+    const histCounts = (function() {
+        const bins = 10;
+        const vals = a.bpmVals;
+        if (!vals.length) return [];
+        const minV = Math.min(...vals), maxV = Math.max(...vals);
+        const width = Math.max(1, (maxV-minV)/bins);
+        const counts = new Array(bins).fill(0);
+        for (let i=0;i<bins;i++) histLabels.push(Math.round(minV+i*width)+"-"+Math.round(minV+(i+1)*width));
+        vals.forEach(v => { let idx = Math.floor((v-minV)/width); if (idx>=bins) idx=bins-1; if(idx<0) idx=0; counts[idx]++; });
+        return counts;
+    })();
+    const histImg = await captureChartImage({
+        type: "bar",
+        data: { labels: histLabels, datasets: [{ label: "BPM distribution", data: histCounts, backgroundColor: "#16a34a" }] },
+        options: { scales: {
+            x: { title: { display: true, text: "BPM range", color: "#111" }, ticks: { color: "#111" } },
+            y: { title: { display: true, text: "Sample count", color: "#111" }, ticks: { color: "#111" } }
+        }, plugins: { legend: { labels: { color: "#111" } } } }
+    }, 900, 400);
+
+    const poincarePoints = [];
+    for (let i=1;i<a.rr.length;i++) poincarePoints.push({x:a.rr[i-1], y:a.rr[i]});
+    const poincareImg = await captureChartImage({
+        type: "scatter",
+        data: { datasets: [{ label: "RRn vs RRn+1", data: poincarePoints, backgroundColor: "#7c3aed" }] },
+        options: { scales: {
+            x: { title: { display: true, text: "RR(n) (ms)", color: "#111" }, ticks: { color: "#111" } },
+            y: { title: { display: true, text: "RR(n+1) (ms)", color: "#111" }, ticks: { color: "#111" } }
+        }, plugins: { legend: { labels: { color: "#111" } } } }
+    }, 700, 500);
+
+    const corrPoints = [];
+    recordedLog.forEach(r => { if (r.bpm>0 && r.spo2>0) corrPoints.push({x:r.bpm, y:r.spo2}); });
+    const corrImg = await captureChartImage({
+        type: "scatter",
+        data: { datasets: [{ label: "BPM vs SpO2", data: corrPoints, backgroundColor: "#0284c7" }] },
+        options: { scales: {
+            x: { title: { display: true, text: "BPM", color: "#111" }, ticks: { color: "#111" } },
+            y: { title: { display: true, text: "SpO2 (%)", color: "#111" }, ticks: { color: "#111" } }
+        }, plugins: { legend: { labels: { color: "#111" } } } }
+    }, 700, 500);
+
+    doc.addPage(); y = 18;
+    heading("6. Time-Series Graphs", 14);
+    doc.addImage(bpmImg, "PNG", 14, y, 182, 81); y += 88;
+    doc.addImage(spo2Img, "PNG", 14, y, 182, 81);
+
+    doc.addPage(); y = 18;
+    doc.addImage(tempImg, "PNG", 14, y, 182, 81); y += 90;
+    heading("7. BPM Distribution", 13);
+    doc.addImage(histImg, "PNG", 14, y, 182, 81);
+
+    doc.addPage(); y = 18;
+    heading("8. Poincare Plot (HRV) and Correlation", 13);
+    doc.addImage(poincareImg, "PNG", 14, y, 87, 62);
+    doc.addImage(corrImg, "PNG", 109, y, 87, 62);
+
+    const blob = doc.output("blob");
+    await saveBlobToDataFolder("full_analysis_" + Date.now() + ".pdf", blob);
+}
+
+// ======================================================================
+// SEND DATA TO TELEGRAM (health values only - no theory/formulas)
+// ======================================================================
+async function sendDataToTelegram() {
+    if (recordedLog.length === 0) {
+        alert("No recorded data yet. Press Record, capture some data, then Stop Recording.");
+        return;
+    }
+    if (!telegramConfigured()) {
+        alert("Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID at the top of the script before sending to Telegram.");
+        return;
+    }
+
+    const a = computeAnalysis();
+
+    // Short text summary message - health values only
+    const summary =
+        "Health Monitor Reading\n" +
+        "Time: " + new Date().toLocaleString() + "\n" +
+        "Duration: " + fmt(a.durationSec,1) + "s, Samples: " + a.sampleCount + "\n\n" +
+        "Heart Rate: avg " + fmt(a.bpm.mean,0) + " BPM (min " + fmt(a.bpm.min,0) + ", max " + fmt(a.bpm.max,0) + ")\n" +
+        "SpO2: avg " + fmt(a.spo2.mean,0) + "% (min " + fmt(a.spo2.min,0) + ", max " + fmt(a.spo2.max,0) + ")\n" +
+        "Temperature: avg " + fmt(a.temp.mean,1) + " F (min " + fmt(a.temp.min,1) + ", max " + fmt(a.temp.max,1) + ")\n" +
+        "Lub-Dub beats: " + a.lubdub.totalBeats;
+
+    try {
+        const msgUrl = "https://api.telegram.org/bot" + TELEGRAM_BOT_TOKEN + "/sendMessage";
+        const msgResp = await fetch(msgUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: summary })
+        });
+        if (!msgResp.ok) throw new Error("sendMessage HTTP " + msgResp.status);
+    } catch (error) {
+        console.error("Telegram message failed:", error);
+        alert("Failed to send Telegram message. Check the console.");
+        return;
+    }
+
+    // Text file with per-sample health readings only (timestamp + vitals, no formulas/theory)
+    let fileText = "Health Data Log\nGenerated: " + new Date().toLocaleString() + "\n\n";
+    fileText += "Timestamp, Heart Rate (BPM), SpO2 (%), Temperature (F), Lub-Dub Count\n";
+    recordedLog.forEach(r => {
+        fileText += r.timestamp + ", " + (r.bpm>0?r.bpm.toFixed(0):"--") + ", " + (r.spo2>0?r.spo2.toFixed(0):"--") + ", " + r.tempF.toFixed(1) + ", " + r.lubdubCount + "\n";
+    });
+
+    const blob = new Blob([fileText], { type: "text/plain" });
+    const formData = new FormData();
+    formData.append("chat_id", TELEGRAM_CHAT_ID);
+    formData.append("document", blob, "health_data_" + Date.now() + ".txt");
+
+    try {
+        const docUrl = "https://api.telegram.org/bot" + TELEGRAM_BOT_TOKEN + "/sendDocument";
+        const docResp = await fetch(docUrl, { method: "POST", body: formData });
+        if (!docResp.ok) throw new Error("sendDocument HTTP " + docResp.status);
+        alert("Health data sent to Telegram.");
+    } catch (error) {
+        console.error("Telegram file send failed:", error);
+        alert("Message sent, but the data file failed to send. Check the console.");
+    }
+}
+
+</script>
+
+</body>
+</html>
