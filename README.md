@@ -130,7 +130,7 @@ Hack-Genesis-2026/
 * LM3915
 * MAX30102
 * NTC Thermistor
-* Analog heart-sound sensor
+* Diaphragm
 
 ## Purpose
 
