@@ -42,7 +42,8 @@ SpO₂ is measured using the **MAX30102 pulse-oximeter sensor**. The sensor prov
 
 The analog front-end was designed and simulated using **LTspice**.
 
-<img width="1389" height="864" alt="image" src="https://github.com/user-attachments/assets/755800c3-e645-4f78-a09d-7e2bcc34fc08" />
+<img width="1339" height="861" alt="image" src="https://github.com/user-attachments/assets/5e434b55-9020-484b-bffd-bd28078e0403" />
+
 
 The circuit contains sections for:
 
