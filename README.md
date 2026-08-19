@@ -18,7 +18,6 @@ The overall system follows a sensor-to-analysis pipeline involving physiological
 
 <img width="350" height="637" alt="image" src="https://github.com/user-attachments/assets/5ef6dec5-50ee-4f30-bd12-0b47047abadd" />
 
-
 ## Hardware
 
 The system combines dedicated sensors with analog signal-conditioning circuitry.
@@ -44,7 +43,6 @@ SpO₂ is measured using the **MAX30102 pulse-oximeter sensor**. The sensor prov
 The analog front-end was designed and simulated using **LTspice**.
 
 <img width="1389" height="864" alt="image" src="https://github.com/user-attachments/assets/755800c3-e645-4f78-a09d-7e2bcc34fc08" />
-
 
 The circuit contains sections for:
 
@@ -73,21 +71,13 @@ The web interface provides a way to present the acquired health-related data.
 
 The Arduino code for the ESP32 is located in:
 
-```text
-code/
-└── ESP32/
-    └── health-monitor.ino
-```
+`code/ESP32/Health Monitor/`
 
 ### Web Interface
 
 The HTML-based health-monitoring interface is located in:
 
-```text
-code/
-└── Health-Monitor/
-    └── index.html
-```
+`code/Health Monitor/`
 
 ## Signal Processing
 
@@ -105,26 +95,20 @@ The MAX30102 red and infrared signals are processed to estimate blood oxygen sat
 
 ## Project Structure
 
-```text
-Hack-Genesis-2026/
-│
-├── README.md
-│
-├── circuit/
-│   ├── SPICE-Models/
-│   │   ├── LM386
-│   │   ├── LM358
-│   │   └── LM3915
-│   │
-│   └── health-monitor.asc
-│
-└── code/
-    ├── ESP32/
-    │   └── health-monitor.ino
-    │
-    └── Health-Monitor/
-        └── index.html
-```
+The repository is organized as follows:
+
+`Hack-Genesis-2026/`
+
+- `README.md` — Project documentation
+- `circuit/` — LTspice circuit files and external SPICE models
+  - `SPICE-Models/` — External SPICE models used by the LTspice simulation
+    - `LM386`
+    - `LM358`
+    - `LM3915`
+  - `health-monitor.asc` — LTspice circuit schematic
+- `code/` — Project source code
+  - `ESP32/` — ESP32 Arduino code
+  - `Health-Monitor/` — HTML code for the health-monitoring web interface
 
 ## Tools and Technologies
 
