@@ -95,20 +95,27 @@ The MAX30102 red and infrared signals are processed to estimate blood oxygen sat
 
 ## Project Structure
 
-The repository is organized as follows:
-
-`Hack-Genesis-2026/`
-
-- `README.md` — Project documentation
-- `circuit/` — LTspice circuit files and external SPICE models
-  - `SPICE-Models/` — External SPICE models used by the LTspice simulation
-    - `LM386`
-    - `LM358`
-    - `LM3915`
-  - `health-monitor.asc` — LTspice circuit schematic
-- `code/` — Project source code
-  - `ESP32/` — ESP32 Arduino code
-  - `Health-Monitor/` — HTML code for the health-monitoring web interface
+Hack-Genesis-2026/
+│
+├── README.md
+│
+├── circuit/
+│   ├── spice models/
+│   │   ├── LM386 (1).asy
+│   │   ├── LM386.sub
+│   │   ├── LM3915.asy
+│   │   ├── LM3915.sub
+│   │   ├── lm358.sub
+│   │   └── opamp2.asy
+│   │
+│   └── Health monitor circuit.asc
+│
+└── code/
+    ├── esp32/
+    │   └── Health_monitor.ino
+    │
+    └── webpage/
+        └── Health_monitor_webpage.html
 
 ## Tools and Technologies
 
