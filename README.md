@@ -24,11 +24,11 @@ The system combines dedicated sensors with analog signal-conditioning circuitry.
 
 ### Heart Rate Monitoring
 
-An analog heart-sound sensor is used to acquire the heart-sound signal. The signal is amplified and conditioned through an analog front-end before being processed by the ESP32.
+An diaphragm is used to acquire the heart-sound signal. The signal is amplified and conditioned through an analog front-end before being processed by the ESP32.
 
 The signal path consists of:
 
-**Heart-Sound Sensor → Amplifier → Filter / Envelope Detection → ESP32**
+**Diaphragm → Amplifier → Filter / Envelope Detection → ESP32**
 
 ### Temperature Monitoring
 
