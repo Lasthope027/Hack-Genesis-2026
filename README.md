@@ -95,6 +95,7 @@ The MAX30102 red and infrared signals are processed to estimate blood oxygen sat
 
 ## Project Structure
 
+```text
 Hack-Genesis-2026/
 │
 ├── README.md
@@ -116,6 +117,7 @@ Hack-Genesis-2026/
     │
     └── webpage/
         └── Health_monitor_webpage.html
+```
 
 ## Tools and Technologies
 
